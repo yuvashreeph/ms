@@ -1,0 +1,240 @@
+kubectl get deployments
+
+kubectl get deployment nginx-deployment -o yaml
+
+kubectl apply -f nginx-deployment.yaml
+
+kubectl autoscale deployment nginx-deployment --min=2 --max=6 --cpu-percent=50
+
+kubectl get hpa
+
+kubectl describe hpa nginx-deployment
+
+1. Start and check Kubernetes
+# Check kubectl installation
+kubectl version --client
+
+# Check the active context
+kubectl config current-context
+
+# List available contexts
+kubectl config get-contexts
+
+# Check cluster connectivity
+kubectl cluster-info
+
+# Check nodes
+kubectl get nodes
+
+# Check Kubernetes namespaces
+kubectl get namespaces
+
+2. Create and manage YAML files in PowerShell
+# Create a working folder
+New-Item -ItemType Directory -Force -Path "$HOME\k8s-exam"
+Set-Location "$HOME\k8s-exam"
+
+# Create a YAML file in Notepad
+notepad pod.yaml
+
+# List files in the current folder
+Get-ChildItem
+
+# Display a YAML file
+Get-Content pod.yaml
+
+3. Deploy and delete resources
+# Create or update resources from a YAML file
+kubectl apply -f pod.yaml
+
+# Apply every YAML file in a folder
+kubectl apply -f .
+
+# Apply a Kustomize configuration
+kubectl apply -k .
+
+# Delete resources defined in a file
+kubectl delete -f pod.yaml
+
+# Delete a particular Pod
+kubectl delete pod web-server
+
+# Delete a Deployment
+kubectl delete deployment nginx-deployment
+
+# Delete a Service
+kubectl delete service nginx-service
+
+
+4. Pods — create, view and troubleshoot
+# List Pods
+kubectl get pods
+
+# Show Pods with more details
+kubectl get pods -o wide
+
+# List Pods in all namespaces
+kubectl get pods -A
+
+# Get details about a Pod
+kubectl describe pod web-server
+
+# View Pod labels
+kubectl get pods --show-labels
+
+# View logs
+kubectl logs web-server
+
+# Follow logs continuously
+kubectl logs -f web-server
+
+# Run a command inside a container
+kubectl exec -it web-server -- sh
+
+# Delete a Pod
+kubectl delete pod web-server
+
+
+5. Deployments — replicas and scaling
+
+# List Deployments
+kubectl get deployments
+
+# Describe a Deployment
+kubectl describe deployment nginx-deployment
+
+# Scale to 3 replicas
+kubectl scale deployment nginx-deployment --replicas=3
+
+# Scale to 6 replicas
+kubectl scale deployment nginx-deployment --replicas=6
+
+# Check replica status
+kubectl get deployment nginx-deployment
+
+# View the Deployment configuration
+kubectl get deployment nginx-deployment -o yaml
+
+# Restart a Deployment
+kubectl rollout restart deployment nginx-deployment
+
+# Check rollout status
+kubectl rollout status deployment nginx-deployment
+
+# View rollout history
+kubectl rollout history deployment nginx-deployment
+
+# Undo the latest rollout
+kubectl rollout undo deployment nginx-deployment
+
+6. Services — expose applications
+# List Services
+kubectl get services
+
+# Short form
+kubectl get svc
+
+# Describe a Service
+kubectl describe service frontend-service
+
+# View Service endpoints
+kubectl get endpoints
+
+# Create a ClusterIP Service for a Deployment
+kubectl expose deployment nginx-deployment --port=80 --target-port=80 --name=nginx-service
+
+# Access a Pod through localhost
+kubectl port-forward pod/web-server 8080:80
+
+# Access a Service through localhost
+kubectl port-forward service/nginx-service 8080:80
+
+7. Multiple containers in a Pod
+# List container names in a Pod
+kubectl get pod multi-container-pod -o jsonpath="{.spec.containers[*].name}"
+
+# View details of all containers
+kubectl describe pod multi-container-pod
+
+# View logs from a specific container
+kubectl logs multi-container-pod -c nginx-container
+
+# Open a shell in a specific container
+kubectl exec -it multi-container-pod -c nginx-container -- sh
+
+
+8. Horizontal Pod Autoscaler (HPA)
+# Create an HPA
+kubectl autoscale deployment nginx-deployment --min=2 --max=6 --cpu-percent=50
+
+# View HPAs
+kubectl get hpa
+
+# Get detailed HPA information
+kubectl describe hpa nginx-deployment
+
+# View CPU usage of Pods
+kubectl top pods
+
+# View CPU usage of nodes
+kubectl top nodes
+
+# Delete an HPA
+kubectl delete hpa nginx-deployment
+
+9. Labels and selectors
+# List Pods with labels
+kubectl get pods --show-labels
+
+# Find Pods with a specific label
+kubectl get pods -l app=nginx
+
+# Add a label to a Pod
+kubectl label pod web-server environment=test
+
+# Update an existing label
+kubectl label pod web-server environment=production --overwrite
+
+# Remove a label
+kubectl label pod web-server environment-
+
+
+10. Namespaces
+
+# List namespaces
+kubectl get namespaces
+
+# Create a namespace
+kubectl create namespace testing
+
+# List Pods in a namespace
+kubectl get pods -n testing
+
+# Deploy a file into a namespace
+kubectl apply -f pod.yaml -n testing
+
+# Delete a namespace
+kubectl delete namespace testing
+
+11. Troubleshooting commands
+# Check Pod status
+kubectl get pods
+
+# Inspect Pod events and configuration
+kubectl describe pod web-server
+
+# View Pod logs
+kubectl logs web-server
+
+# Check Deployment status
+kubectl get deployments
+
+# Inspect recent cluster events
+kubectl get events --sort-by=.metadata.creationTimestamp
+
+# Check Services and endpoints
+kubectl get svc
+kubectl get endpoints
+
+# Check nodes
+kubectl get nodes

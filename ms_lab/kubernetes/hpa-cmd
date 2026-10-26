@@ -1,0 +1,6 @@
+kubectl apply -f nginx-hpa.yaml
+kubectl get hpa
+kubectl get pods
+kubectl top pods
+kubectl get apiservices
+

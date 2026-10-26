@@ -1,0 +1,19 @@
+kubectl apply -f web-server.yaml
+
+kubectl get pods
+
+kubectl describe pod web-server
+
+kubectl get pod web-server --show-labels
+
+kubectl port-forward pod/web-server 8080:80
+
+
+kubectl apply -f frontend-deployment.yaml
+kubectl apply -f frontend-service.yaml
+kubectl apply -f backend-deployment.yaml
+kubectl apply -f backend-service.yaml
+
+kubectl get deployments
+kubectl get pods
+kubectl get services

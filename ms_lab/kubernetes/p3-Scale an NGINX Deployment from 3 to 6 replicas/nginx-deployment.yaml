@@ -1,0 +1,36 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 6
+  selector:
+    matchLabels:
+      app: nginx-scale
+  template:
+    metadata:
+      labels:
+        app: nginx-scale
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+spec:
+  type: ClusterIP
+  selector:
+    app: nginx-scale
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP

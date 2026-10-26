@@ -1,0 +1,12 @@
+kubectl apply -f nginx-deployment.yaml
+
+kubectl get deployment nginx-deployment
+
+kubectl get pods -l app=nginx-scale
+
+kubectl get svc nginx-service
+kubectl get endpoints nginx-service
+kubectl cluster-info
+
+kubectl scale deployment nginx-deployment --replicas=6
+

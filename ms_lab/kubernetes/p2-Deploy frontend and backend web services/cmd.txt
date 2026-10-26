@@ -1,0 +1,18 @@
+kubectl apply -f web-stack.yaml
+
+kubectl get deployments
+
+kubectl get pods
+
+kubectl get services
+
+kubectl get endpoints
+
+Test frontend and backend communication:
+kubectl run test-client --image=busybox:1.36 --rm -it --restart=Never -- wget -qO- http://frontend-service
+
+kubectl run test-client --image=busybox:1.36 --rm -it --restart=Never -- wget -qO- http://backend-service
+
+
+kubectl apply -f web-stack.yaml
+
