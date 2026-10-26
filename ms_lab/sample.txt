@@ -1,0 +1,502 @@
+1. Project folder structure
+Create a folder named student-system:
+student-system/
+├── frontend/
+│   ├── index.html
+│   └── Dockerfile
+├── backend-flask/
+│   ├── app.py
+│   ├── requirements.txt
+│   └── Dockerfile
+├── backend-node/
+│   ├── server.js
+│   ├── package.json
+│   └── Dockerfile
+├── compose.yaml
+└── kubernetes/
+    ├── frontend.yaml
+    ├── backend.yaml
+    ├── database.yaml
+    └── services.yaml
+For the exam, use one backend only. The examples below show how to choose either Flask or Node.js.
+2. Frontend files
+Create frontend/index.html.
+HTML
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student Management</title>
+</head>
+<body>
+    <h1>Student Management System</h1>
+    <button onclick="loadStudents()">View Students</button>
+    <pre id="result"></pre>
+
+    <script>
+        async function loadStudents() {
+            const response = await fetch("/api/students");
+            const data = await response.json();
+            document.getElementById("result").textContent =
+                JSON.stringify(data, null, 2);
+        }
+    </script>
+</body>
+</html>
+Create frontend/nginx.conf so Nginx can send API requests to the backend.
+Nginx
+server {
+    listen 80;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    location /api/ {
+        proxy_pass http://backend:5000;
+    }
+}
+Create frontend/Dockerfile.
+dockerfile
+FROM nginx:alpine
+COPY index.html /usr/share/nginx/html/index.html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+3. Flask backend
+Create backend-flask/app.py.
+This backend connects to PostgreSQL and returns student records.
+Python
+Run
+import os
+import time
+import psycopg2
+from flask import Flask, jsonify
+
+app = Flask(__name__)
+
+def get_connection():
+    return psycopg2.connect(
+        host=os.getenv("DB_HOST", "db"),
+        dbname=os.getenv("DB_NAME", "studentdb"),
+        user=os.getenv("DB_USER", "admin"),
+        password=os.getenv("DB_PASSWORD", "student123")
+    )
+
+@app.route("/api/students")
+def students():
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS students (
+                        id SERIAL PRIMARY KEY,
+                        name VARCHAR(100) NOT NULL
+                    )
+                """)
+                cur.execute("""
+                    INSERT INTO students (name)
+                    SELECT 'Arun'
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM students WHERE name = 'Arun'
+                    )
+                """)
+                cur.execute("SELECT id, name FROM students ORDER BY id")
+                rows = cur.fetchall()
+
+        return jsonify([
+            {"id": row[0], "name": row[1]} for row in rows
+        ])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/health")
+def health():
+    return {"status": "ok"}
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
+Create backend-flask/requirements.txt.
+Flask
+psycopg2-binary
+Create backend-flask/Dockerfile.
+dockerfile
+FROM python:3.12-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY app.py .
+EXPOSE 5000
+CMD ["python", "app.py"]
+4. Alternative: Node.js backend
+Use this instead of Flask if the question specifically asks for Node.js. Do not run both backend alternatives in the same Compose configuration.
+Create backend-node/server.js.
+JavaScript
+const express = require("express");
+const { Pool } = require("pg");
+
+const app = express();
+const pool = new Pool({
+  host: process.env.DB_HOST || "db",
+  database: process.env.DB_NAME || "studentdb",
+  user: process.env.DB_USER || "admin",
+  password: process.env.DB_PASSWORD || "student123",
+  port: 5432
+});
+
+app.get("/api/students", async (req, res) => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS students (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL
+      )
+    `);
+    await pool.query(`
+      INSERT INTO students (name)
+      SELECT 'Arun'
+      WHERE NOT EXISTS (
+        SELECT 1 FROM students WHERE name = 'Arun'
+      )
+    `);
+    const result = await pool.query(
+      "SELECT id, name FROM students ORDER BY id"
+    );
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/health", (req, res) => res.json({ status: "ok" }));
+
+app.listen(3000, "0.0.0.0", () => {
+  console.log("Backend running on port 3000");
+});
+Create backend-node/package.json.
+JSON
+{
+  "name": "student-backend",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "pg": "^8.16.0"
+  }
+}
+Create backend-node/Dockerfile.
+dockerfile
+FROM node:20-alpine
+WORKDIR /app
+COPY package.json .
+RUN npm install
+COPY server.js .
+EXPOSE 3000
+CMD ["npm", "start"]
+For the Node.js version, change the Nginx proxy target to http://backend:3000 and set the backend's DB_HOST to db. The Compose and Kubernetes backend port values must also be 3000.
+5. Docker Compose — compose.yaml
+This example uses the Flask backend. It builds the frontend and backend images, runs PostgreSQL, connects all services, and preserves database data in a named volume.
+YAML
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+  backend:
+    build: ./backend-flask
+    environment:
+      DB_HOST: db
+      DB_NAME: studentdb
+      DB_USER: admin
+      DB_PASSWORD: student123
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: studentdb
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: student123
+    volumes:
+      - student-data:/var/lib/postgresql/data
+
+volumes:
+  student-data:
+Run with Docker Desktop
+Open a terminal in the student-system folder.
+Bash
+docker compose config
+docker compose up -d --build
+docker compose ps
+docker compose logs
+Open http://localhost:8080 in your browser and click View Students.
+To stop the application:
+Bash
+docker compose down
+The named database volume is preserved. This is a small practice example; for a real application, keep passwords in secrets rather than committing them to a file.
+6. Kubernetes YAML files
+Kubernetes needs separate resources for each component. We'll use four files for the frontend, backend, database, and services, plus one persistent-volume claim.
+Important: Kubernetes does not use the build: instruction from Compose. First build the images locally with Docker Desktop. The following manifests use the image names student-frontend:1.0 and student-backend:1.0.
+File 1 — kubernetes/frontend.yaml
+YAML
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: student-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: student-frontend
+  template:
+    metadata:
+      labels:
+        app: student-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: student-frontend:1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+File 2 — kubernetes/backend.yaml
+YAML
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: student-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: student-backend
+  template:
+    metadata:
+      labels:
+        app: student-backend
+    spec:
+      containers:
+        - name: backend
+          image: student-backend:1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+          env:
+            - name: DB_HOST
+              value: db
+            - name: DB_NAME
+              value: studentdb
+            - name: DB_USER
+              value: admin
+            - name: DB_PASSWORD
+              value: student123
+File 3 — kubernetes/database.yaml
+YAML
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: student-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: student-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: student-db
+  template:
+    metadata:
+      labels:
+        app: student-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: studentdb
+            - name: POSTGRES_USER
+              value: admin
+            - name: POSTGRES_PASSWORD
+              value: student123
+          volumeMounts:
+            - name: database-storage
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: database-storage
+          persistentVolumeClaim:
+            claimName: student-data
+File 4 — kubernetes/services.yaml
+YAML
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+spec:
+  type: NodePort
+  selector:
+    app: student-frontend
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+spec:
+  selector:
+    app: student-backend
+  ports:
+    - port: 5000
+      targetPort: 5000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+spec:
+  selector:
+    app: student-db
+  ports:
+    - port: 5432
+      targetPort: 5432
+Build images for Kubernetes
+Run these commands from the project root:
+Bash
+docker build -t student-frontend:1.0 ./frontend
+docker build -t student-backend:1.0 ./backend-flask
+Docker Desktop Kubernetes often can use local images with imagePullPolicy: IfNotPresent. If the cluster cannot find a locally built image, check that Docker Desktop Kubernetes is enabled and that the images are accessible to its cluster.
+Deploy all Kubernetes files
+Make sure Docker Desktop Kubernetes is running first.
+Bash
+kubectl apply -f kubernetes/database.yaml
+kubectl apply -f kubernetes/backend.yaml
+kubectl apply -f kubernetes/frontend.yaml
+kubectl apply -f kubernetes/services.yaml
+
+kubectl get deployments
+kubectl get pods
+kubectl get services
+Open http://localhost:30080 to try the frontend. If a Pod is not running, use kubectl describe pod POD_NAME and kubectl logs POD_NAME to troubleshoot.
+
+
+
+
+
+
+
+Yes! In Docker practical questions, sometimes the scenario asks you to pass arguments from the user when running a container. This can be done using command-line arguments in Python or Node.js and passing them through docker run.
+Let's learn the simple exam patterns.
+1. Python Flask — pass arguments to Docker
+Suppose the user enters a name when running the container.
+app.py
+Python
+Run
+import sys
+from flask import Flask
+
+app = Flask(__name__)
+
+name = sys.argv[1] if len(sys.argv) > 1 else "Student"
+
+@app.route("/")
+def home():
+    return "Welcome " + name
+
+app.run(host="0.0.0.0", port=5000)
+Dockerfile
+dockerfile
+FROM python:3.12-slim
+WORKDIR /app
+RUN pip install flask
+COPY app.py .
+EXPOSE 5000
+ENTRYPOINT ["python", "app.py"]
+Build and run
+Bash
+docker build -t welcome-app .
+docker run -d --name welcome1 -p 5000:5000 welcome-app Yuvashree
+2. Node.js — pass arguments to Docker
+server.js
+JavaScript
+const express = require("express");
+const app = express();
+
+const name = process.argv[2] || "Student";
+
+app.get("/", (req, res) => {
+    res.send("Welcome " + name);
+});
+
+app.listen(3000, "0.0.0.0");
+Dockerfile
+dockerfile
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY server.js .
+EXPOSE 3000
+ENTRYPOINT ["node", "server.js"]
+Run it:
+Bash
+docker build -t welcome-node .
+docker run -d --name welcome-node1 -p 3000:3000 welcome-node Arun
+Here, Arun is passed to the Node.js application.
+
+
+
+
+If the exam question says “Docker arguments should be given by the user,” use this simple example. The user enters the argument in the docker run command.
+1. Create app.py
+Python
+Run
+import sys
+
+name = sys.argv[1]
+
+print("Welcome", name)
+2. Create Dockerfile
+dockerfile
+FROM python:3.12-slim
+WORKDIR /app
+COPY app.py .
+ENTRYPOINT ["python", "app.py"]
+3. Build the Docker image
+Bash
+docker build -t welcome-app .
+4. Run with a user-provided argument
+Bash
+docker run --name welcome1 welcome-app Arun
+Output:
+Welcome Arun
+The user can change Arun to any other name:
+Bash
+docker run --name welcome2 welcome-app Priya
+Output:
+Welcome Priya
+How it works
+●	ENTRYPOINT specifies the command to execute.
+●	sys.argv[1] reads the first argument passed to the Python program.
+●	welcome-app Arun passes Arun as the argument.
+Exam tip: If the question asks for user-provided Docker arguments, remember:
+Bash
+docker build -t image-name .
+docker run --name container-name image-name argument
+Note: This example prints the output and exits; you do not need Flask or port mapping for this question.
+

@@ -1,0 +1,6 @@
+services:
+  shopping-monolith:
+    build: ./monolith
+    image: shopping-monolith:1.0
+    ports:
+      - "5000:5000"

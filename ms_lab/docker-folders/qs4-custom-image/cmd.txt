@@ -1,0 +1,15 @@
+Build your custom Docker image :  docker build -t my-python-app:1.0 .
+
+Check the image. :  docker images
+
+Run the application with environment variables:  docker run -d -p 5000:5000 --name flask-app -e DB_HOST=localhost -e DB_USER=postgres -e DB_PASSWORD=password -e DB_NAME=mydatabase my-python-app:1.0
+
+Verify the container :docker ps
+
+Check application logs :  docker logs flask-app
+
+http://localhost:5000
+
+Save the Docker image as a file (optional) : docker save -o my-python-app.tar my-python-app:1.0
+
+Tag the image for Docker Hub : docker tag my-python-app:1.0 YOUR_USERNAME/my-python-app:1.0

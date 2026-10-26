@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student Management</title>
+</head>
+<body>
+    <h1>Student Management System</h1>
+
+    <button onclick="loadStudents()">View Students</button>
+    <pre id="result"></pre>
+
+    <script>
+        async function loadStudents() {
+            const response = await fetch("http://localhost:5000/students");
+            const data = await response.json();
+
+            document.getElementById("result").textContent =
+                JSON.stringify(data, null, 2);
+        }
+    </script>
+</body>
+</html>

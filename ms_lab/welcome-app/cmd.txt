@@ -1,0 +1,5 @@
+Build the Docker image:
+docker build -t welcome-app .
+
+Run with a user-provided argument:
+docker run --name welcome1 welcome-app Arun

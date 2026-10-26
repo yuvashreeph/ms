@@ -1,0 +1,1212 @@
+Docker
+docker --version
+docker info
+docker pull nginx:alpine (pull image)
+docker images
+docker build -t myapp . 
+docker run myapp
+docker run -d myapp
+docker run -p 5000:5000 myapp
+docker run -d --name myapp -p 5000:5000 nginx:alpine
+docker ps
+docker ps -a
+docker stop container
+docker start container
+docker restart container
+docker rm container
+docker rmi image
+docker logs container
+docker inspect container
+docker port container
+docker exec -it container bash
+docker volume create pgdata
+docker network ls
+docker compose config
+docker compose build
+docker compose up -d
+docker compose up
+docker compose ps
+docker compose logs
+docker compose stop
+docker compose down
+docker system prune
+docker tag SOURCE_IMAGE[:TAG] TARGET_IMAGE[:TAG]
+docker build -t student-app:v1 . 
+docker tag student-app:v1 student-app:v2 
+docker images
+docker run -e DB_HOST=postgres flaskapp
+curl.exe http://localhost:8080
+
+flask-nginx-project/ │ ├── app.py ├── requirements.txt ├── Dockerfile ├── docker-compose.yml └── nginx.conf
+
+
+Dockerfile
+FROM python:3.12-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY app.py .
+EXPOSE 5000
+CMD ["python", "app.py"]
+Environment Variables
+DB_HOST = os.environ["DB_HOST"]
+docker run -e DB_HOST=postgres flaskapp
+
+docker-compose.yml   or   compose.yaml
+version: "3.9"
+
+services:
+  web:
+    build: .
+    container_name: flaskapp
+    ports:
+      - "5000:5000"
+    environment:
+      DB_HOST: db
+    depends_on:
+      - db
+  db:
+    image: postgres:16
+    container_name: postgres-db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: studentdb
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:
+
+app.py
+from flask import Flask
+import os
+
+app = Flask(__name__)
+db_host = os.getenv("DB_HOST", "localhost")
+
+@app.route("/")
+def home():
+    return f"Hello! Flask is running.\nDatabase Host = {db_host}"
+@app.route("/about")
+def about():
+    return "Docker Compose Example with Environment Variables"
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
+
+from flask import Flask, request, jsonify
+app = Flask(__name__)
+
+@app.route("/", methods=["GET"])
+def home():
+    return "Welcome to Flask!"
+
+@app.route("/post", methods=["POST"])
+def post_data():
+    data = request.get_json()
+
+    return jsonify({
+        "message": "POST request successful",
+        "received_data": data
+    })
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
+nginx.conf — Reverse proxy
+events {}
+http {
+    server {
+        listen 80;
+        location / {
+            proxy_pass http://web:5000;
+        }
+    }
+}
+docker-compose.yml
+services:
+  web:
+    build: .
+    expose:
+      - "5000"
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - web
+2. Node.js (Express)
+server.js package.json Dockerfile
+server.js
+const express = require("express");
+const app = express();
+
+app.get("/", (req, res) => {
+    res.send("Hello from Node.js Docker!");
+});
+
+app.listen(3000, () => {
+    console.log("Server running on port 3000");
+});
+package.json
+{
+  "name": "nodeapp",
+  "version": "1.0.0",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
+
+Dockerfile
+FROM node:20
+WORKDIR /app
+COPY . .
+RUN npm install
+EXPOSE 3000
+CMD ["node", "server.js"]
+
+kubectl version --client
+kubectl config current-context
+kubectl cluster-info
+kubectl get nodes
+
+mkdir -p ~/k8s-exam 
+cd ~/k8s-exam
+
+New-Item -ItemType Directory -Force -Path "$HOME\k8s-exam"
+Set-Location "$HOME\k8s-exam"
+nano web-server.yaml   notepad web-server.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: web-server
+  labels:
+    app: web-server
+spec:
+  containers:
+    - name: nginx
+      image: nginx:1.27-alpine
+      ports:
+        - containerPort: 80
+Deploy the file : kubectl apply -f web-server.yaml
+Expected output: pod/web-server created
+Verify the result
+kubectl get pods
+kubectl describe pod web-server
+kubectl get pod web-server --show-labels
+
+Test the web server : kubectl port-forward pod/web-server 8080:80
+Deployment + Service - > web-app.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-service
+spec:
+  type: ClusterIP
+  selector:
+    app: web
+  ports:
+    - port: 80
+      targetPort: 80
+Deploy it: kubectl apply -f web-app.yaml
+Verify everything:
+kubectl get deployments
+kubectl get pods
+kubectl get services
+kubectl get endpoints web-service
+To test the Service from inside Kubernetes, run this in another terminal:
+kubectl run test-client \
+  --image=busybox:1.36 \
+  --rm -it \
+  --restart=Never \
+  -- wget -qO- http://web-service
+
+Problem II — Deploy frontend and backend web services
+notepad web-stack.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        tier: frontend
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+spec:
+  selector:
+    tier: frontend
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      tier: backend
+  template:
+    metadata:
+      labels:
+        tier: backend
+    spec:
+      containers:
+        - name: httpd
+          image: httpd:2.4-alpine
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+spec:
+  selector:
+    tier: backend
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+  type: ClusterIP
+Deploy all four resources : kubectl apply -f web-stack.yaml
+Verify the Deployments : kubectl get deployments
+Verify the Pods: kubectl get pods
+Verify the Services : kubectl get services
+Verify the endpoints: kubectl get endpoints
+Test frontend and backend communication
+kubectl run test-client --image=busybox:1.36 --rm -it --restart=Never -- wget -qO- http://frontend-service
+
+kubectl run test-client --image=busybox:1.36 --rm -it --restart=Never -- wget -qO- http://backend-service
+
+Scale an NGINX Deployment from 3 to 6 replicas
+notepad nginx-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 6
+  selector:
+    matchLabels:
+      app: nginx-scale
+  template:
+    metadata:
+      labels:
+        app: nginx-scale
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+spec:
+  type: ClusterIP
+  selector:
+    app: nginx-scale
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+Apply the YAML: kubectl apply -f nginx-deployment.yaml
+Verify the Deployment : kubectl get deployment nginx-deployment
+Verify all six Pods: kubectl get pods -l app=nginx-scale
+Verify the Service and endpoints
+kubectl get svc nginx-service
+kubectl get endpoints nginx-service
+kubectl cluster-info
+kubectl scale deployment nginx-deployment --replicas=6
+kubectl version --client
+kubectl config current-context
+kubectl config current-context
+kubectl cluster-info
+kubectl get nodes
+kubectl describe pod web-server
+
+kubectl apply -f frontend-deployment.yaml
+kubectl apply -f frontend-service.yaml
+kubectl apply -f backend-deployment.yaml
+kubectl apply -f backend-service.yaml
+
+kubectl get deployments
+kubectl get pods
+kubectl get services
+
+kubectl get nodes
+kubectl apply -f web-app.yaml
+kubectl get deployments
+kubectl get pods -o wide
+kubectl get services
+kubectl describe deployment college-web
+kubectl describe service college-web-service
+kubectl get endpoints college-web-service
+
+
+
+
+
+XQuery  – data.xml
+sorting
+for $book in doc("data.xml")/library/book
+where xs:integer($book/published) > 2020
+order by $book/title
+return
+    <book-summary id="{$book/@id}">
+        {$book/title/text()}
+    </book-summary>
+Aggregation and Grouping
+for $category in distinct-values(doc("data.xml")/library/book/@category)
+let $books := doc("data.xml")/library/book[@category = $category]
+return
+    <category-summary>
+        <category>{$category}</category>
+        <book-count>{count($books)}</book-count>
+        <average-price>
+            {format-number(avg($books/price), "0.00")}
+        </average-price>
+    </category-summary>
+
+distinct-values()
+count()
+avg()
+format-number()
+Conditional Transformation with FLWOR
+for $book in doc("data.xml")/library/book
+return
+    <book-entry>
+        <inventory-status>
+            {
+                if (xs:integer($book/stock) < 10)
+                then "Reorder"
+                else "In Stock"
+            }
+        </inventory-status>
+        {$book/published}
+        {$book/stock}
+    </book-entry>
+Custom XQuery Function
+declare function local:price-in-inr(
+    $price as xs:decimal,
+    $currency as xs:string
+) as xs:decimal {
+
+    if ($currency = "GBP")
+    then $price * 105.0
+    else if ($currency = "EUR")
+    then $price * 90.0
+    else $price
+};
+
+for $book in doc("data.xml")/library/book
+return
+    <book-price>
+        <title>{$book/title/text()}</title>
+        <price-in-inr>
+            {
+                local:price-in-inr(
+                    xs:decimal($book/price),
+                    string($book/price/@currency)
+                )
+            }
+        </price-in-inr>
+    </book-price>
+FLWOR Filtering and Ordering
+for $book in doc("data.xml")/library/book
+where
+    ($book/@category = "technology"
+     or $book/@category = "business")
+    and xs:integer($book/published) >= 2020
+order by xs:integer($book/stock) descending
+return
+    <book-summary>
+        <title>{$book/title/text()}</title>
+        <category>{$book/@category}</category>
+        <stock>{$book/stock/text()}</stock>
+    </book-summary>
+
+
+
+Nested FLWOR and Category Summaries
+for $category in distinct-values(doc("data.xml")/library/book/@category)
+let $books := doc("data.xml")/library/book[@category = $category]
+return
+    <category-summary>
+        <category>{$category}</category>
+        <book-count>{count($books)}</book-count>
+        <titles>
+            {
+                for $book in $books
+                order by $book/title
+                return <title>{$book/title/text()}</title>
+            }
+        </titles>
+    </category-summary>
+
+Xml
+<?xml version="1.0" encoding="UTF-8"?>
+<library>
+    <book id="b101" category="technology">
+        <title>Advanced XML Processing</title>
+        <published>2021</published>
+        <stock>8</stock>
+        <price currency="GBP">42.50</price>
+    </book>
+</library>
+
+
+
+
+
+
+
+
+
+File: /home/ics1761/project/k8s-challenge/web-stack.yaml
+web-stack.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        tier: frontend
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+spec:
+  type: ClusterIP
+  selector:
+    tier: frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      tier: backend
+  template:
+    metadata:
+      labels:
+        tier: backend
+    spec:
+      containers:
+        - name: httpd
+          image: httpd:2.4-alpine
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+spec:
+  type: ClusterIP
+  selector:
+    tier: backend
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+
+Commands
+cd /home/ics1761/project/k8s-challenge
+nano web-stack.yaml
+kubectl apply -f web-stack.yaml
+kubectl rollout status deployment/frontend-deployment
+kubectl rollout status deployment/backend-deployment
+kubectl get deployments
+kubectl get pods
+kubectl get services
+kubectl get endpointslice
+
+docker network create college-net
+docker run -d --name web1 --network college-net nginx:alpine
+docker run -d --name web2 --network college-net nginx:alpine
+docker network inspect college-net
+docker exec web1 wget -qO- http://web2
+docker exec web1 ping -c 3 web2
+
+Docker
+docker --version
+docker info
+docker pull nginx:alpine (pull image)
+docker images
+docker build -t myapp . 
+docker run myapp
+docker run -d myapp
+docker run -p 5000:5000 myapp
+docker run -d --name myapp -p 5000:5000 nginx:alpine
+docker ps
+docker ps -a
+docker stop container
+docker start container
+docker restart container
+docker rm container
+docker rmi image
+docker logs container
+docker inspect container
+docker port container
+docker exec -it container bash
+docker volume create pgdata
+docker network ls
+docker compose config
+docker compose build
+docker compose up -d
+docker compose up
+docker compose ps
+docker compose logs
+docker compose stop
+docker compose down
+docker system prune
+docker tag SOURCE_IMAGE[:TAG] TARGET_IMAGE[:TAG]
+docker build -t student-app:v1 . 
+docker tag student-app:v1 student-app:v2 
+docker images
+docker run -e DB_HOST=postgres flaskapp
+curl.exe http://localhost:8080
+
+flask-nginx-project/ │ ├── app.py ├── requirements.txt ├── Dockerfile ├── docker-compose.yml └── nginx.conf
+
+
+Dockerfile
+FROM python:3.12-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY app.py .
+EXPOSE 5000
+CMD ["python", "app.py"]
+Environment Variables
+DB_HOST = os.environ["DB_HOST"]
+docker run -e DB_HOST=postgres flaskapp
+
+docker-compose.yml   or   compose.yaml
+version: "3.9"
+
+services:
+  web:
+    build: .
+    container_name: flaskapp
+    ports:
+      - "5000:5000"
+    environment:
+      DB_HOST: db
+    depends_on:
+      - db
+  db:
+    image: postgres:16
+    container_name: postgres-db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: studentdb
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:
+
+app.py
+from flask import Flask
+import os
+
+app = Flask(__name__)
+db_host = os.getenv("DB_HOST", "localhost")
+
+@app.route("/")
+def home():
+    return f"Hello! Flask is running.\nDatabase Host = {db_host}"
+@app.route("/about")
+def about():
+    return "Docker Compose Example with Environment Variables"
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
+
+from flask import Flask, request, jsonify
+app = Flask(__name__)
+
+@app.route("/", methods=["GET"])
+def home():
+    return "Welcome to Flask!"
+
+@app.route("/post", methods=["POST"])
+def post_data():
+    data = request.get_json()
+
+    return jsonify({
+        "message": "POST request successful",
+        "received_data": data
+    })
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
+nginx.conf — Reverse proxy
+events {}
+http {
+    server {
+        listen 80;
+        location / {
+            proxy_pass http://web:5000;
+        }
+    }
+}
+docker-compose.yml
+services:
+  web:
+    build: .
+    expose:
+      - "5000"
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - web
+2. Node.js (Express)
+server.js package.json Dockerfile
+server.js
+const express = require("express");
+const app = express();
+
+app.get("/", (req, res) => {
+    res.send("Hello from Node.js Docker!");
+});
+
+app.listen(3000, () => {
+    console.log("Server running on port 3000");
+});
+package.json
+{
+  "name": "nodeapp",
+  "version": "1.0.0",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
+
+Dockerfile
+FROM node:20
+WORKDIR /app
+COPY . .
+RUN npm install
+EXPOSE 3000
+CMD ["node", "server.js"]
+
+kubectl version --client
+kubectl config current-context
+kubectl cluster-info
+kubectl get nodes
+
+mkdir -p ~/k8s-exam 
+cd ~/k8s-exam
+
+New-Item -ItemType Directory -Force -Path "$HOME\k8s-exam"
+Set-Location "$HOME\k8s-exam"
+nano web-server.yaml   notepad web-server.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: web-server
+  labels:
+    app: web-server
+spec:
+  containers:
+    - name: nginx
+      image: nginx:1.27-alpine
+      ports:
+        - containerPort: 80
+Deploy the file : kubectl apply -f web-server.yaml
+Expected output: pod/web-server created
+Verify the result
+kubectl get pods
+kubectl describe pod web-server
+kubectl get pod web-server --show-labels
+
+Test the web server : kubectl port-forward pod/web-server 8080:80
+Deployment + Service - > web-app.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-service
+spec:
+  type: ClusterIP
+  selector:
+    app: web
+  ports:
+    - port: 80
+      targetPort: 80
+Deploy it: kubectl apply -f web-app.yaml
+Verify everything:
+kubectl get deployments
+kubectl get pods
+kubectl get services
+kubectl get endpoints web-service
+To test the Service from inside Kubernetes, run this in another terminal:
+kubectl run test-client \
+  --image=busybox:1.36 \
+  --rm -it \
+  --restart=Never \
+  -- wget -qO- http://web-service
+
+Problem II — Deploy frontend and backend web services
+notepad web-stack.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        tier: frontend
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+spec:
+  selector:
+    tier: frontend
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      tier: backend
+  template:
+    metadata:
+      labels:
+        tier: backend
+    spec:
+      containers:
+        - name: httpd
+          image: httpd:2.4-alpine
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+spec:
+  selector:
+    tier: backend
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+  type: ClusterIP
+Deploy all four resources : kubectl apply -f web-stack.yaml
+Verify the Deployments : kubectl get deployments
+Verify the Pods: kubectl get pods
+Verify the Services : kubectl get services
+Verify the endpoints: kubectl get endpoints
+Test frontend and backend communication
+kubectl run test-client --image=busybox:1.36 --rm -it --restart=Never -- wget -qO- http://frontend-service
+
+kubectl run test-client --image=busybox:1.36 --rm -it --restart=Never -- wget -qO- http://backend-service
+
+Scale an NGINX Deployment from 3 to 6 replicas
+notepad nginx-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 6
+  selector:
+    matchLabels:
+      app: nginx-scale
+  template:
+    metadata:
+      labels:
+        app: nginx-scale
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+spec:
+  type: ClusterIP
+  selector:
+    app: nginx-scale
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+Apply the YAML: kubectl apply -f nginx-deployment.yaml
+Verify the Deployment : kubectl get deployment nginx-deployment
+Verify all six Pods: kubectl get pods -l app=nginx-scale
+Verify the Service and endpoints
+kubectl get svc nginx-service
+kubectl get endpoints nginx-service
+kubectl cluster-info
+kubectl scale deployment nginx-deployment --replicas=6
+kubectl version --client
+kubectl config current-context
+kubectl config current-context
+kubectl cluster-info
+kubectl get nodes
+kubectl describe pod web-server
+
+kubectl apply -f frontend-deployment.yaml
+kubectl apply -f frontend-service.yaml
+kubectl apply -f backend-deployment.yaml
+kubectl apply -f backend-service.yaml
+
+kubectl get deployments
+kubectl get pods
+kubectl get services
+
+kubectl get nodes
+kubectl apply -f web-app.yaml
+kubectl get deployments
+kubectl get pods -o wide
+kubectl get services
+kubectl describe deployment college-web
+kubectl describe service college-web-service
+kubectl get endpoints college-web-service
+
+
+
+
+
+XQuery  – data.xml
+sorting
+for $book in doc("data.xml")/library/book
+where xs:integer($book/published) > 2020
+order by $book/title
+return
+    <book-summary id="{$book/@id}">
+        {$book/title/text()}
+    </book-summary>
+Aggregation and Grouping
+for $category in distinct-values(doc("data.xml")/library/book/@category)
+let $books := doc("data.xml")/library/book[@category = $category]
+return
+    <category-summary>
+        <category>{$category}</category>
+        <book-count>{count($books)}</book-count>
+        <average-price>
+            {format-number(avg($books/price), "0.00")}
+        </average-price>
+    </category-summary>
+
+distinct-values()
+count()
+avg()
+format-number()
+Conditional Transformation with FLWOR
+for $book in doc("data.xml")/library/book
+return
+    <book-entry>
+        <inventory-status>
+            {
+                if (xs:integer($book/stock) < 10)
+                then "Reorder"
+                else "In Stock"
+            }
+        </inventory-status>
+        {$book/published}
+        {$book/stock}
+    </book-entry>
+Custom XQuery Function
+declare function local:price-in-inr(
+    $price as xs:decimal,
+    $currency as xs:string
+) as xs:decimal {
+
+    if ($currency = "GBP")
+    then $price * 105.0
+    else if ($currency = "EUR")
+    then $price * 90.0
+    else $price
+};
+
+for $book in doc("data.xml")/library/book
+return
+    <book-price>
+        <title>{$book/title/text()}</title>
+        <price-in-inr>
+            {
+                local:price-in-inr(
+                    xs:decimal($book/price),
+                    string($book/price/@currency)
+                )
+            }
+        </price-in-inr>
+    </book-price>
+FLWOR Filtering and Ordering
+for $book in doc("data.xml")/library/book
+where
+    ($book/@category = "technology"
+     or $book/@category = "business")
+    and xs:integer($book/published) >= 2020
+order by xs:integer($book/stock) descending
+return
+    <book-summary>
+        <title>{$book/title/text()}</title>
+        <category>{$book/@category}</category>
+        <stock>{$book/stock/text()}</stock>
+    </book-summary>
+
+
+
+Nested FLWOR and Category Summaries
+for $category in distinct-values(doc("data.xml")/library/book/@category)
+let $books := doc("data.xml")/library/book[@category = $category]
+return
+    <category-summary>
+        <category>{$category}</category>
+        <book-count>{count($books)}</book-count>
+        <titles>
+            {
+                for $book in $books
+                order by $book/title
+                return <title>{$book/title/text()}</title>
+            }
+        </titles>
+    </category-summary>
+
+Xml
+<?xml version="1.0" encoding="UTF-8"?>
+<library>
+    <book id="b101" category="technology">
+        <title>Advanced XML Processing</title>
+        <published>2021</published>
+        <stock>8</stock>
+        <price currency="GBP">42.50</price>
+    </book>
+</library>
+
+
+
+
+
+
+
+
+
+File: /home/ics1761/project/k8s-challenge/web-stack.yaml
+web-stack.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        tier: frontend
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+spec:
+  type: ClusterIP
+  selector:
+    tier: frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      tier: backend
+  template:
+    metadata:
+      labels:
+        tier: backend
+    spec:
+      containers:
+        - name: httpd
+          image: httpd:2.4-alpine
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+spec:
+  type: ClusterIP
+  selector:
+    tier: backend
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+
+Commands
+cd /home/ics1761/project/k8s-challenge
+nano web-stack.yaml
+kubectl apply -f web-stack.yaml
+kubectl rollout status deployment/frontend-deployment
+kubectl rollout status deployment/backend-deployment
+kubectl get deployments
+kubectl get pods
+kubectl get services
+kubectl get endpointslice
+
+docker network create college-net
+docker run -d --name web1 --network college-net nginx:alpine
+docker run -d --name web2 --network college-net nginx:alpine
+docker network inspect college-net
+docker exec web1 wget -qO- http://web2
+docker exec web1 ping -c 3 web2
+

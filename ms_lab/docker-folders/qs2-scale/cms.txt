@@ -1,0 +1,9 @@
+run compose :  docker compose up --build
+
+docker compose up --scale app=3
+
+docker compose ps
+
+docker compose logs app
+
+docker compose down

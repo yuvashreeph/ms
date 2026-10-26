@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    networks:
+      - frontend-net
+    depends_on:
+      - backend
+
+  backend:
+    build: ./backend
+    container_name: backend
+    ports:
+      - "5000:5000"
+    networks:
+      - frontend-net
+      - backend-net
+    environment:
+      DB_HOST: db
+      DB_NAME: appdb
+      DB_USER: admin
+      DB_PASSWORD: password
+    depends_on:
+      - db
+
+
+  db:
+    image: redis
+    networks:
+      - backend-net
+
+
+networks:
+
+  frontend-net:
+    driver: bridge
+
+  backend-net:
+    driver: bridge

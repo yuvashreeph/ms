@@ -1,0 +1,10 @@
+Build the image :  docker build -t flask-app .
+
+Run the container : docker run -d -p 5000:5000 -e DB_HOST=postgres -e DB_USER=admin -e DB_PASS=password --name flask-container flask-app
+
+Browser: http://localhost:5000
+
+run compose :  docker compose up --build
+docker compose ps
+docker compose logs app
+docker compose down

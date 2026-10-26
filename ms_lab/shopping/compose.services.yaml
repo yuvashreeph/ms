@@ -1,0 +1,16 @@
+services:
+  login:
+    build: ./services/login
+    image: shopping-login:1.0
+    ports:
+      - "5001:5000"
+  cart:
+    build: ./services/cart
+    image: shopping-cart:1.0
+    ports:
+      - "5002:5000"
+  checkout:
+    build: ./services/checkout
+    image: shopping-checkout:1.0
+    ports:
+      - "5003:5000"
